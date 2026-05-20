@@ -42,6 +42,13 @@ func (a *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	user, err := a.auth.Register(r.Context(), req.Email, req.Password)
 	if err != nil {
+		if errors.Is(err, usecase.ErrInvalidEmail) || errors.Is(err, usecase.ErrWeakPassword) {
+			httpx.WriteJson(w, http.StatusBadRequest, map[string]string{
+				"error": err.Error(),
+			})
+			return
+		}
+
 		if errors.Is(err, usecase.ErrEmailAlreadyExists) {
 			log.Println("user already exists")
 			httpx.WriteJson(w, http.StatusConflict, map[string]string{

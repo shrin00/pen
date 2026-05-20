@@ -12,6 +12,8 @@ import (
 var (
 	ErrInvalidCredentials = errors.New("Invalid credentials")
 	ErrEmailAlreadyExists = errors.New("Email already exists")
+	ErrInvalidEmail       = errors.New("invalid email")
+	ErrWeakPassword       = errors.New("password must be at least 8 characters")
 )
 
 type UserRepository interface {
@@ -31,6 +33,10 @@ func NewAuthService(user UserRepository) *AuthService {
 
 func (s *AuthService) Register(ctx context.Context, email string, password string) (*domain.User, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
+
+	if err := validateCredentials(email, password); err != nil {
+		return nil, err
+	}
 
 	existingUser, err := s.user.FindByEmail(ctx, email)
 	if err != nil {
@@ -74,4 +80,15 @@ func (s *AuthService) Login(ctx context.Context, email string, password string) 
 	}
 
 	return user, nil
+}
+
+func validateCredentials(email string, password string) error {
+	if email == "" || !strings.Contains(email, "@") {
+		return ErrInvalidEmail
+	}
+
+	if len(password) < 8 {
+		return ErrWeakPassword
+	}
+	return nil
 }
