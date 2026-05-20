@@ -1,18 +1,33 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/shrin00/pen/internal/config"
+	"github.com/shrin00/pen/internal/database"
+	"github.com/shrin00/pen/internal/repository/postgres"
 	"github.com/shrin00/pen/internal/transport/httpx"
 )
 
 func main() {
-
+	ctx := context.Background()
+	// load the configs
 	cfg := config.LoadConfig()
+	if cfg.DatabaseURL == "" {
+		log.Fatal("database url is required...")
+	}
+
+	// connect to database
+	db, err := database.NewPostgresPool(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %w", err)
+	}
+	defer db.Close()
+	log.Println("connected to database")
 
 	router := chi.NewRouter()
 

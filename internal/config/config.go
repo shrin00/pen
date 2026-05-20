@@ -8,7 +8,8 @@ import (
 )
 
 type Config struct {
-	Port string
+	Port        string
+	DatabaseURL string
 }
 
 // LoadConfig loads config variables from environment variables
@@ -22,7 +23,10 @@ func LoadConfig() Config {
 		port = "8080"
 	}
 
+	databaseUrl := os.Getenv("DATABASE_URL")
+
 	return Config{
-		Port: port,
+		Port:        port,
+		DatabaseURL: databaseUrl,
 	}
 }
