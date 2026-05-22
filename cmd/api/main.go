@@ -20,7 +20,7 @@ func main() {
 	// connect to database
 	db, err := database.NewPostgresPool(cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("failed to connect to database: %w", err)
+		log.Fatalf("failed to connect to database: %v", err)
 	}
 	defer db.Close()
 	log.Println("connected to database")
