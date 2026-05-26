@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/shrin00/pen/internal/domain"
 	"github.com/shrin00/pen/internal/security"
@@ -21,13 +22,24 @@ type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (*domain.User, error)
 }
 
-type AuthService struct {
-	user UserRepository
+type SessionRepository interface {
+	Create(ctx context.Context, session *domain.Session) error
+	FindByTokenHash(ctx context.Context, token_hash string) (*domain.Session, error)
+	FindValidByTokenHash(ctx context.Context, token_hash string) (*domain.Session, error)
+	RevokeByTokenHash(ctx context.Context, token_hash string) (*domain.Session, error)
 }
 
-func NewAuthService(user UserRepository) *AuthService {
+type AuthService struct {
+	user       UserRepository
+	session    SessionRepository
+	SessionTTL time.Duration
+}
+
+func NewAuthService(user UserRepository, session SessionRepository, sessionTTL time.Duration) *AuthService {
 	return &AuthService{
-		user: user,
+		user:       user,
+		session:    session,
+		SessionTTL: sessionTTL,
 	}
 }
 
@@ -63,23 +75,39 @@ func (s *AuthService) Register(ctx context.Context, email string, password strin
 	return user, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, email string, password string) (*domain.User, error) {
+func (s *AuthService) Login(ctx context.Context, email string, password string) (*domain.User, string, error) {
 	email = strings.TrimSpace(strings.ToLower(email))
 
 	user, err := s.user.FindByEmail(ctx, email)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if user == nil {
-		return nil, ErrInvalidCredentials
+		return nil, "", ErrInvalidCredentials
 	}
 
 	if !security.CheckPassword(password, user.PasswordHash) {
-		return nil, ErrInvalidCredentials
+		return nil, "", ErrInvalidCredentials
 	}
 
-	return user, nil
+	user_token, err := security.GenerateRawToken()
+	if err != nil {
+		return nil, "", err
+	}
+
+	token_hash := security.TokenHash(user_token)
+	session_domain := &domain.Session{
+		UserID:    user.ID,
+		TokenHash: token_hash,
+		ExpiresAt: time.Now().Add(s.SessionTTL),
+	}
+	err = s.session.Create(ctx, session_domain)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return user, user_token, nil
 }
 
 func validateCredentials(email string, password string) error {

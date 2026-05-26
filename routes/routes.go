@@ -7,16 +7,18 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shrin00/pen/internal/config"
 	"github.com/shrin00/pen/internal/repository/postgres"
 	"github.com/shrin00/pen/internal/transport/handlers"
 	"github.com/shrin00/pen/internal/transport/httpx"
 	"github.com/shrin00/pen/internal/usecase"
 )
 
-func NewRoutes(db *pgxpool.Pool) *chi.Mux {
+func NewRoutes(db *pgxpool.Pool, cfg *config.Config) *chi.Mux {
 
 	userRepo := postgres.NewUserRepository(db)
-	authService := usecase.NewAuthService(userRepo)
+	sessionRepo := postgres.NewSessionRepository(db)
+	authService := usecase.NewAuthService(userRepo, sessionRepo, cfg.SessionTTL)
 	AuthHandler := handlers.NewAuthHandler(authService)
 
 	router := chi.NewRouter()
@@ -27,14 +29,14 @@ func NewRoutes(db *pgxpool.Pool) *chi.Mux {
 	router.Use(middleware.Recoverer)
 
 	router.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		httpx.WriteJson(w, http.StatusOK, map[string]string{
+		httpx.WriteJSON(w, http.StatusOK, map[string]string{
 			"status": "ok",
 		})
 	})
 
 	router.Route("/api/v1", func(r chi.Router) {
 		r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
-			httpx.WriteJson(w, http.StatusOK, map[string]string{
+			httpx.WriteJSON(w, http.StatusOK, map[string]string{
 				"message": "pong",
 			})
 		})

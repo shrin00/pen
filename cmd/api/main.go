@@ -25,7 +25,7 @@ func main() {
 	defer db.Close()
 	log.Println("connected to database")
 
-	router := routes.NewRoutes(db)
+	router := routes.NewRoutes(db, &cfg)
 
 	addr := ":" + cfg.Port
 	log.Println("server is listening on ", addr)
